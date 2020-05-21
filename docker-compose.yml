@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+
+  mongodb:
+    restart: always
+    image: mongo:${MONGO_VERSION}
+    networks:
+      localizer:
+        aliases:
+          - ${MONGO_HOST}
+    expose:
+      - 27017
+    volumes:
+      - ${MONGO_PERSISTENCE_DIR}:/data/db:rw
+
+
+  backend:
+    container_name: l_backend
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - MONGO=mongodb://${MONGO_HOST}:${MONGO_PORT}/${MONGO_DBNAME}
+      - FACEBOOK_APP_ID=${FACEBOOK_APP_ID}
+      - FACEBOOK_APP_SECRET=${FACEBOOK_APP_SECRET}
+      - TELEGRAM_LOGIN_TOKEN=${TELEGRAM_LOGIN_TOKEN}
+      - PORT:${BACKEND_PORT}
+    ports:
+      - ${BACKEND_PORT}:${BACKEND_PORT}
+    networks:
+      localizer:
+        aliases:
+          - localizer-backend
+    depends_on:
+      - mongodb
+
+  frontend:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      - VUE_APP_API=localizer-backend:${BACKEND_PORT}
+    ports:
+      - ${FRONTEND_PORT}:5000
+    networks:
+      - localizer
+    depends_on:
+      - backend
+
+networks:
+  localizer:
